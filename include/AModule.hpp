@@ -17,6 +17,7 @@ class AModule : public IModule {
   operator Gtk::Widget &() override;
   auto doAction(const std::string &name) -> void override;
 
+  /// Emitting on this dispatcher triggers a update() call
   Glib::Dispatcher dp;
 
  protected:
@@ -40,7 +41,7 @@ class AModule : public IModule {
 
  private:
   bool handleUserEvent(GdkEventButton *const &ev);
-
+  const bool isTooltip;
   std::vector<int> pid_;
   gdouble distance_scrolled_y_;
   gdouble distance_scrolled_x_;

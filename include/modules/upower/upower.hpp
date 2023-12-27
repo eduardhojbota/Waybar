@@ -69,9 +69,10 @@ class UPower : public AModule {
   UpDevice *displayDevice;
   guint login1_id;
   GDBusConnection *login1_connection;
-  UPowerTooltip *upower_tooltip;
+  std::unique_ptr<UPowerTooltip> upower_tooltip;
   std::string lastStatus;
   bool showAltText;
+  bool showIcon = true;
   bool upowerRunning;
   guint upowerWatcher_id;
   std::string nativePath_;

@@ -38,6 +38,9 @@
 #endif
 #if defined(HAVE_CPU_LINUX) || defined(HAVE_CPU_BSD)
 #include "modules/cpu.hpp"
+#include "modules/cpu_frequency.hpp"
+#include "modules/cpu_usage.hpp"
+#include "modules/load.hpp"
 #endif
 #include "modules/idle_inhibitor.hpp"
 #if defined(HAVE_MEMORY_LINUX) || defined(HAVE_MEMORY_BSD)
@@ -65,6 +68,9 @@
 #ifdef HAVE_UPOWER
 #include "modules/upower/upower.hpp"
 #endif
+#ifdef HAVE_PIPEWIRE
+#include "modules/privacy/privacy.hpp"
+#endif
 #ifdef HAVE_LIBPULSE
 #include "modules/pulseaudio.hpp"
 #endif
@@ -88,6 +94,7 @@
 #include "modules/cava.hpp"
 #endif
 #include "bar.hpp"
+#include "modules/cffi.hpp"
 #include "modules/custom.hpp"
 #include "modules/image.hpp"
 #include "modules/temperature.hpp"
@@ -98,7 +105,7 @@ namespace waybar {
 class Factory {
  public:
   Factory(const Bar& bar, const Json::Value& config);
-  AModule* makeModule(const std::string& name) const;
+  AModule* makeModule(const std::string& name, const std::string& pos) const;
 
  private:
   const Bar& bar_;

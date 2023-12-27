@@ -2,10 +2,13 @@
 
 #include <spdlog/spdlog.h>
 
+#include "util/scope_guard.hpp"
+
 waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
-                                const Json::Value& config)
+                                const Json::Value& config, const std::string& output_name)
     : ALabel(config, "custom-" + name, id, "{}"),
       name_(name),
+      output_name_(output_name),
       id_(id),
       percentage_(0),
       fp_(nullptr),
@@ -40,7 +43,7 @@ void waybar::modules::Custom::delayWorker() {
     }
     if (can_update) {
       if (config_["exec"].isString()) {
-        output_ = util::command::exec(config_["exec"].asString());
+        output_ = util::command::exec(config_["exec"].asString(), output_name_);
       }
       dp.emit();
     }
@@ -51,12 +54,17 @@ void waybar::modules::Custom::delayWorker() {
 void waybar::modules::Custom::continuousWorker() {
   auto cmd = config_["exec"].asString();
   pid_ = -1;
-  fp_ = util::command::open(cmd, pid_);
+  fp_ = util::command::open(cmd, pid_, output_name_);
   if (!fp_) {
     throw std::runtime_error("Unable to open " + cmd);
   }
   thread_ = [this, cmd] {
     char* buff = nullptr;
+    waybar::util::ScopeGuard buff_deleter([buff]() {
+      if (buff) {
+        free(buff);
+      }
+    });
     size_t len = 0;
     if (getline(&buff, &len, fp_) == -1) {
       int exit_code = 1;
@@ -72,7 +80,7 @@ void waybar::modules::Custom::continuousWorker() {
       if (config_["restart-interval"].isUInt()) {
         pid_ = -1;
         thread_.sleep_for(std::chrono::seconds(config_["restart-interval"].asUInt()));
-        fp_ = util::command::open(cmd, pid_);
+        fp_ = util::command::open(cmd, pid_, output_name_);
         if (!fp_) {
           throw std::runtime_error("Unable to open " + cmd);
         }
@@ -90,7 +98,6 @@ void waybar::modules::Custom::continuousWorker() {
       output_ = {0, output};
       dp.emit();
     }
-    free(buff);
   };
 }
 
@@ -106,7 +113,7 @@ void waybar::modules::Custom::waitingWorker() {
     }
     if (can_update) {
       if (config_["exec"].isString()) {
-        output_ = util::command::exec(config_["exec"].asString());
+        output_ = util::command::exec(config_["exec"].asString(), output_name_);
       }
       dp.emit();
     }
@@ -149,6 +156,7 @@ auto waybar::modules::Custom::update() -> void {
     } else {
       parseOutputRaw();
     }
+
     auto str = fmt::format(fmt::runtime(format_), text_, fmt::arg("alt", alt_),
                            fmt::arg("icon", getIcon(percentage_, alt_)),
                            fmt::arg("percentage", percentage_));
@@ -189,18 +197,23 @@ void waybar::modules::Custom::parseOutputRaw() {
   std::string line;
   int i = 0;
   while (getline(output, line)) {
+    Glib::ustring validated_line = line;
+    if (!validated_line.validate()) {
+      validated_line = validated_line.make_valid();
+    }
+
     if (i == 0) {
       if (config_["escape"].isBool() && config_["escape"].asBool()) {
-        text_ = Glib::Markup::escape_text(line);
+        text_ = Glib::Markup::escape_text(validated_line);
       } else {
-        text_ = line;
+        text_ = validated_line;
       }
-      tooltip_ = line;
+      tooltip_ = validated_line;
       class_.clear();
     } else if (i == 1) {
-      tooltip_ = line;
+      tooltip_ = validated_line;
     } else if (i == 2) {
-      class_.push_back(line);
+      class_.push_back(validated_line);
     } else {
       break;
     }

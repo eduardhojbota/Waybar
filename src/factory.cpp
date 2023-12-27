@@ -1,8 +1,17 @@
 #include "factory.hpp"
 
+#ifdef HAVE_LIBPULSE
+#include "modules/pulseaudio_slider.hpp"
+#endif
+
+#ifdef HAVE_LIBUDEV
+#include "modules/backlight_slider.hpp"
+#endif
+
 waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_(bar), config_(config) {}
 
-waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
+waybar::AModule* waybar::Factory::makeModule(const std::string& name,
+                                             const std::string& pos) const {
   try {
     auto hash_pos = name.find('#');
     auto ref = name.substr(0, hash_pos);
@@ -20,6 +29,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
 #ifdef HAVE_UPOWER
     if (ref == "upower") {
       return new waybar::modules::upower::UPower(id, config_[name]);
+    }
+#endif
+#ifdef HAVE_PIPEWIRE
+    if (ref == "privacy") {
+      return new waybar::modules::privacy::Privacy(id, config_[name], pos);
     }
 #endif
 #ifdef HAVE_MPRIS
@@ -99,6 +113,17 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref == "cpu") {
       return new waybar::modules::Cpu(id, config_[name]);
     }
+#if defined(HAVE_CPU_LINUX)
+    if (ref == "cpu_frequency") {
+      return new waybar::modules::CpuFrequency(id, config_[name]);
+    }
+#endif
+    if (ref == "cpu_usage") {
+      return new waybar::modules::CpuUsage(id, config_[name]);
+    }
+    if (ref == "load") {
+      return new waybar::modules::Load(id, config_[name]);
+    }
 #endif
     if (ref == "clock") {
       return new waybar::modules::Clock(id, config_[name]);
@@ -126,6 +151,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref == "backlight") {
       return new waybar::modules::Backlight(id, config_[name]);
     }
+    if (ref == "backlight/slider") {
+      return new waybar::modules::BacklightSlider(id, config_[name]);
+    }
 #endif
 #ifdef HAVE_LIBEVDEV
     if (ref == "keyboard-state") {
@@ -135,6 +163,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
 #ifdef HAVE_LIBPULSE
     if (ref == "pulseaudio") {
       return new waybar::modules::Pulseaudio(id, config_[name]);
+    }
+    if (ref == "pulseaudio/slider") {
+      return new waybar::modules::PulseaudioSlider(id, config_[name]);
     }
 #endif
 #ifdef HAVE_LIBMPDCLIENT
@@ -174,7 +205,10 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
       return new waybar::modules::Temperature(id, config_[name]);
     }
     if (ref.compare(0, 7, "custom/") == 0 && ref.size() > 7) {
-      return new waybar::modules::Custom(ref.substr(7), id, config_[name]);
+      return new waybar::modules::Custom(ref.substr(7), id, config_[name], bar_.output->name);
+    }
+    if (ref.compare(0, 5, "cffi/") == 0 && ref.size() > 5) {
+      return new waybar::modules::CFFI(ref.substr(5), id, config_[name]);
     }
   } catch (const std::exception& e) {
     auto err = fmt::format("Disabling module \"{}\", {}", name, e.what());

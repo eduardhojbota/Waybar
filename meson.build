@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.9.22',
+    version: '0.9.24',
     license: 'MIT',
     meson_version: '>= 0.50.0',
     default_options : [
@@ -98,6 +98,7 @@ libinput = dependency('libinput', required: get_option('libinput'))
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
 libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 upower_glib = dependency('upower-glib', required: get_option('upower_glib'))
+pipewire = dependency('libpipewire-0.3', required: get_option('pipewire'))
 playerctl = dependency('playerctl', version : ['>=2.0.0'], required: get_option('mpris'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 libudev = dependency('libudev', required: get_option('libudev'))
@@ -125,7 +126,22 @@ gtk_layer_shell = dependency('gtk-layer-shell-0',
 systemd = dependency('systemd', required: get_option('systemd'))
 
 cpp_lib_chrono = compiler.compute_int('__cpp_lib_chrono', prefix : '#include <chrono>')
-have_chrono_timezones = cpp_lib_chrono >= 201907
+have_chrono_timezones = cpp_lib_chrono >= 201611
+
+if have_chrono_timezones
+   code = '''
+#include <chrono>
+using namespace std::chrono;
+int main(int argc, char** argv) {
+   const time_zone* tz;
+   return 0;
+}
+'''
+   if not compiler.links(code)
+      have_chrono_timezones = false
+   endif
+endif
+
 if have_chrono_timezones
   tz_dep = declare_dependency()
 else
@@ -164,8 +180,10 @@ src_files = files(
     'src/modules/disk.cpp',
     'src/modules/idle_inhibitor.cpp',
     'src/modules/image.cpp',
+    'src/modules/load.cpp',
     'src/modules/temperature.cpp',
     'src/modules/user.cpp',
+    'src/ASlider.cpp',
     'src/main.cpp',
     'src/bar.cpp',
     'src/client.cpp',
@@ -177,7 +195,8 @@ src_files = files(
     'src/util/ustring_clen.cpp',
     'src/util/sanitize_str.cpp',
     'src/util/rewrite_string.cpp',
-    'src/util/gtk_icon.cpp'
+    'src/util/gtk_icon.cpp',
+    'src/util/regex_collection.cpp'
 )
 
 inc_dirs = ['include']
@@ -187,8 +206,12 @@ if is_linux
     add_project_arguments('-DHAVE_MEMORY_LINUX', language: 'cpp')
     src_files += files(
         'src/modules/battery.cpp',
-        'src/modules/cpu/common.cpp',
-        'src/modules/cpu/linux.cpp',
+        'src/modules/cffi.cpp',
+        'src/modules/cpu.cpp',
+        'src/modules/cpu_frequency/common.cpp',
+        'src/modules/cpu_frequency/linux.cpp',
+        'src/modules/cpu_usage/common.cpp',
+        'src/modules/cpu_usage/linux.cpp',
         'src/modules/memory/common.cpp',
         'src/modules/memory/linux.cpp',
     )
@@ -196,8 +219,12 @@ elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
     add_project_arguments('-DHAVE_CPU_BSD', language: 'cpp')
     add_project_arguments('-DHAVE_MEMORY_BSD', language: 'cpp')
     src_files += files(
-        'src/modules/cpu/bsd.cpp',
-        'src/modules/cpu/common.cpp',
+        'src/modules/cffi.cpp',
+        'src/modules/cpu.cpp',
+        'src/modules/cpu_frequency/bsd.cpp',
+        'src/modules/cpu_frequency/common.cpp',
+        'src/modules/cpu_usage/bsd.cpp',
+        'src/modules/cpu_usage/common.cpp',
         'src/modules/memory/bsd.cpp',
         'src/modules/memory/common.cpp',
     )
@@ -264,6 +291,14 @@ if (upower_glib.found() and giounix.found() and not get_option('logind').disable
     src_files += 'src/modules/upower/upower_tooltip.cpp'
 endif
 
+
+if (pipewire.found())
+    add_project_arguments('-DHAVE_PIPEWIRE', language: 'cpp')
+    src_files += 'src/modules/privacy/privacy.cpp'
+    src_files += 'src/modules/privacy/privacy_item.cpp'
+    src_files += 'src/util/pipewire_backend.cpp'
+endif
+
 if (playerctl.found() and giounix.found() and not get_option('logind').disabled())
     add_project_arguments('-DHAVE_MPRIS', language: 'cpp')
     src_files += 'src/modules/mpris/mpris.cpp'
@@ -272,6 +307,8 @@ endif
 if libpulse.found()
     add_project_arguments('-DHAVE_LIBPULSE', language: 'cpp')
     src_files += 'src/modules/pulseaudio.cpp'
+    src_files += 'src/modules/pulseaudio_slider.cpp'
+    src_files += 'src/util/audio_backend.cpp'
 endif
 
 if libjack.found()
@@ -297,6 +334,8 @@ endif
 if libudev.found() and (is_linux or libepoll.found())
     add_project_arguments('-DHAVE_LIBUDEV', language: 'cpp')
     src_files += 'src/modules/backlight.cpp'
+    src_files += 'src/modules/backlight_slider.cpp'
+    src_files += 'src/util/backlight_backend.cpp'
 endif
 
 if libevdev.found() and (is_linux or libepoll.found()) and libinput.found() and (is_linux or libinotify.found())
@@ -348,7 +387,7 @@ if get_option('experimental')
 endif
 
 cava = dependency('cava',
-                  version : '>=0.8.5',
+                  version : '>=0.9.1',
                   required: get_option('cava'),
                   fallback : ['cava', 'cava_dep'],
                   not_found_message: 'cava is not found. Building waybar without cava')
@@ -360,9 +399,12 @@ endif
 
 subdir('protocol')
 
+app_resources = []
+subdir('resources/icons')
+
 executable(
     'waybar',
-    src_files,
+    [src_files, app_resources],
     dependencies: [
         thread_dep,
         client_protos,
@@ -379,6 +421,7 @@ executable(
         libnl,
         libnlgen,
         upower_glib,
+        pipewire,
         playerctl,
         libpulse,
         libjack,
@@ -424,8 +467,10 @@ if scdoc.found()
     man_files = [
         main_manpage_path,
         'waybar-backlight.5.scd',
+        'waybar-backlight-slider.5.scd',
         'waybar-battery.5.scd',
         'waybar-cava.5.scd',
+        'waybar-cffi.5.scd',
         'waybar-clock.5.scd',
         'waybar-cpu.5.scd',
         'waybar-custom.5.scd',
@@ -439,6 +484,8 @@ if scdoc.found()
         'waybar-mpris.5.scd',
         'waybar-network.5.scd',
         'waybar-pulseaudio.5.scd',
+        'waybar-pulseaudio-slider.5.scd',
+        'waybar-privacy.5.scd',
         'waybar-river-mode.5.scd',
         'waybar-river-tags.5.scd',
         'waybar-river-window.5.scd',
