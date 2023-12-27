@@ -577,15 +577,17 @@ auto waybar::Bar::setupWidgets() -> void {
   bool expand_right = config["expand-right"].isBool() ? config["expand-right"].asBool() : false;
   bool no_center = config["no-center"].isBool() ? config["no-center"].asBool() : false;
 
-  box_.pack_start(left_, expand_left, expand_left);
+  box_.pack_start(left_, expand_left, expand_left, 0);
   if (!no_center) {
     if (config["fixed-center"].isBool() ? config["fixed-center"].asBool() : true) {
       box_.set_center_widget(center_);
     } else {
-      box_.pack_start(center_, true, expand_center);
+      spdlog::error("No fixed center_");
+      box_.pack_start(center_, true, expand_center, 0);
     }
   }
-  box_.pack_end(right_, expand_right, expand_right);
+  box_.pack_end(right_, expand_right, expand_right, 0);
+  box_.set_spacing(0);
 
   // Convert to button code for every module that is used.
   setupAltFormatKeyForModuleList("modules-left");
@@ -600,7 +602,7 @@ auto waybar::Bar::setupWidgets() -> void {
   getModules(factory, "modules-right");
 
   for (auto const& module : modules_left_) {
-    left_.pack_start(*module, module->expandEnabled(), module->expandEnabled());
+    left_.pack_end(*module, module->expandEnabled(), module->expandEnabled());
   }
 
   if (!no_center) {
@@ -609,9 +611,9 @@ auto waybar::Bar::setupWidgets() -> void {
     }
   }
 
-  std::reverse(modules_right_.begin(), modules_right_.end());
+  std::reverse(modules_right_.end(),modules_right_.begin());
   for (auto const& module : modules_right_) {
-    right_.pack_end(*module, module->expandEnabled(), module->expandEnabled());
+    right_.pack_start(*module, false, false);
   }
 }
 
