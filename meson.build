@@ -196,7 +196,8 @@ src_files = files(
     'src/util/sanitize_str.cpp',
     'src/util/rewrite_string.cpp',
     'src/util/gtk_icon.cpp',
-    'src/util/regex_collection.cpp'
+    'src/util/regex_collection.cpp',
+    'src/util/css_reload_helper.cpp'
 )
 
 inc_dirs = ['include']
@@ -204,6 +205,7 @@ inc_dirs = ['include']
 if is_linux
     add_project_arguments('-DHAVE_CPU_LINUX', language: 'cpp')
     add_project_arguments('-DHAVE_MEMORY_LINUX', language: 'cpp')
+    add_project_arguments('-DHAVE_SYSTEMD_MONITOR', language: 'cpp')
     src_files += files(
         'src/modules/battery.cpp',
         'src/modules/cffi.cpp',
@@ -214,6 +216,7 @@ if is_linux
         'src/modules/cpu_usage/linux.cpp',
         'src/modules/memory/common.cpp',
         'src/modules/memory/linux.cpp',
+        'src/modules/systemd_failed_units.cpp',
     )
 elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
     add_project_arguments('-DHAVE_CPU_BSD', language: 'cpp')
@@ -495,6 +498,7 @@ if scdoc.found()
         'waybar-sway-scratchpad.5.scd',
         'waybar-sway-window.5.scd',
         'waybar-sway-workspaces.5.scd',
+        'waybar-systemd-failed-units.5.scd',
         'waybar-temperature.5.scd',
         'waybar-tray.5.scd',
         'waybar-states.5.scd',
@@ -535,7 +539,7 @@ endif
 
 catch2 = dependency(
     'catch2',
-    version: '>=2.0.0',
+    version: '>=3.5.1',
     fallback: ['catch2', 'catch2_dep'],
     required: get_option('tests'),
 )
