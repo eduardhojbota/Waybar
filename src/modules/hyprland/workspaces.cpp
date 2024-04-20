@@ -83,6 +83,11 @@ auto Workspaces::parseConfig(const Json::Value &config) -> void {
     m_activeOnly = configActiveOnly.asBool();
   }
 
+  auto configMoveToMonitor = config_["move-to-monitor"];
+  if (configMoveToMonitor.isBool()) {
+    m_moveToMonitor = configMoveToMonitor.asBool();
+  }
+
   auto configSortBy = config_["sort-by"];
   if (configSortBy.isString()) {
     auto sortByStr = configSortBy.asString();
@@ -188,6 +193,10 @@ void Workspaces::doUpdate() {
   // add workspaces that wait to be created
   for (auto &[workspaceData, clientsData] : m_workspacesToCreate) {
     createWorkspace(workspaceData, clientsData);
+  }
+  if (!m_workspacesToCreate.empty()) {
+    updateWindowCount();
+    sortWorkspaces();
   }
   m_workspacesToCreate.clear();
 
@@ -313,7 +322,7 @@ void Workspaces::onEvent(const std::string &ev) {
     onWorkspaceCreated(payload);
   } else if (eventName == "focusedmon") {
     onMonitorFocused(payload);
-  } else if (eventName == "moveworkspace" && !allOutputs()) {
+  } else if (eventName == "moveworkspace") {
     onWorkspaceMoved(payload);
   } else if (eventName == "openwindow") {
     onWindowOpened(payload);
@@ -382,6 +391,12 @@ void Workspaces::onWorkspaceCreated(std::string const &workspaceName,
 
 void Workspaces::onWorkspaceMoved(std::string const &payload) {
   spdlog::debug("Workspace moved: {}", payload);
+
+  // Update active workspace
+  m_activeWorkspaceName = (gIPC->getSocket1JsonReply("activeworkspace"))["name"].asString();
+
+  if (allOutputs()) return;
+
   std::string workspaceName = payload.substr(0, payload.find(','));
   std::string monitorName = payload.substr(payload.find(',') + 1);
 
@@ -821,8 +836,6 @@ void Workspaces::init() {
   m_activeWorkspaceName = (gIPC->getSocket1JsonReply("activeworkspace"))["name"].asString();
 
   initializeWorkspaces();
-  updateWindowCount();
-  sortWorkspaces();
   dp.emit();
 }
 
@@ -1034,9 +1047,17 @@ bool Workspace::handleClicked(GdkEventButton *bt) const {
   if (bt->type == GDK_BUTTON_PRESS) {
     try {
       if (id() > 0) {  // normal
-        gIPC->getSocket1Reply("dispatch workspace " + std::to_string(id()));
+        if (m_workspaceManager.moveToMonitor()) {
+          gIPC->getSocket1Reply("dispatch focusworkspaceoncurrentmonitor " + std::to_string(id()));
+        } else {
+          gIPC->getSocket1Reply("dispatch workspace " + std::to_string(id()));
+        }
       } else if (!isSpecial()) {  // named (this includes persistent)
-        gIPC->getSocket1Reply("dispatch workspace name:" + name());
+        if (m_workspaceManager.moveToMonitor()) {
+          gIPC->getSocket1Reply("dispatch focusworkspaceoncurrentmonitor name:" + name());
+        } else {
+          gIPC->getSocket1Reply("dispatch workspace name:" + name());
+        }
       } else if (id() != -99) {  // named special
         gIPC->getSocket1Reply("dispatch togglespecialworkspace " + name());
       } else {  // special
