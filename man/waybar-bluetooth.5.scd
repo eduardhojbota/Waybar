@@ -54,7 +54,7 @@ Addressed by *bluetooth*
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++
@@ -128,6 +128,19 @@ Addressed by *bluetooth*
 *tooltip-format-enumerate-connected*: ++
 	typeof: string ++
 	This format is used to define how each connected device should be displayed within the *device_enumerate* format replacement in the tooltip menu.
+
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
 
 # FORMAT REPLACEMENTS
 

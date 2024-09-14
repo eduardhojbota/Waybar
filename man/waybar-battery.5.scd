@@ -69,7 +69,7 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 
 *rotate*: ++
 	typeof: integer++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *on-click*: ++
 	typeof: string ++
@@ -108,6 +108,19 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	typeof: bool ++
 	default: false ++
 	Option to enable battery compatibility if not detected.
+
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
 
 # FORMAT REPLACEMENTS
 

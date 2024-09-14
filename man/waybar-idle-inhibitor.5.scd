@@ -21,7 +21,7 @@ screensaver, also known as "presentation mode".
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++
@@ -88,6 +88,19 @@ screensaver, also known as "presentation mode".
 *tooltip-format-deactivated*: ++
 	typeof: string ++
 	This format is used when the inhibit is deactivated.
+
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu. Cannot be "on-click".
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
 
 # FORMAT REPLACEMENTS
 

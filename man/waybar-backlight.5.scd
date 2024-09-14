@@ -38,7 +38,7 @@ The *backlight* module displays the current backlight level.
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *states*: ++
 	typeof: object ++
@@ -80,6 +80,19 @@ The *backlight* module displays the current backlight level.
 	typeof: float ++
 	default: 1.0 ++
 	The speed at which to change the brightness when scrolling.
+
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
 
 # EXAMPLE:
 

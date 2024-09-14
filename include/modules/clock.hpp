@@ -21,10 +21,12 @@ class Clock final : public ALabel {
   auto doAction(const std::string&) -> void override;
 
  private:
-  const std::locale locale_;
+  const std::locale m_locale_;
   // tooltip
-  const std::string tlpFmt_;
-  std::string tlpText_{""};  // tooltip text to print
+  const std::string m_tlpFmt_;
+  std::string m_tlpText_{""};                 // tooltip text to print
+  const Glib::RefPtr<Gtk::Label> m_tooltip_;  // tooltip as a separate Gtk::Label
+  bool query_tlp_cb(int, int, bool, const Glib::RefPtr<Gtk::Tooltip>& tooltip);
   // Calendar
   const bool cldInTooltip_;  // calendar in tooltip
   /*
@@ -49,8 +51,8 @@ class Clock final : public ALabel {
   day cldBaseDay_{0};            // calendar Cached day. Is used when today is changing(midnight)
   std::string cldText_{""};      // calendar text to print
   CldMode cldMode_{CldMode::MONTH};
-  auto get_calendar(const year_month_day& today, const year_month_day& ymd, const time_zone* tz)
-      -> const std::string;
+  auto get_calendar(const year_month_day& today, const year_month_day& ymd,
+                    const time_zone* tz) -> const std::string;
 
   // get local time zone
   auto local_zone() -> const time_zone*;
